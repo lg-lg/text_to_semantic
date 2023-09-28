@@ -33,7 +33,7 @@ class TextToSemanticTrainer(nn.Module):
         result_folder = os.path.join('checkpoints', config.hparams.name)
         self.accelerator.print(result_folder)
         self.hp = config.train
-        self.transformer = transformer.to(self.accelerator.device)
+        self.transformer = transformer
         self.register_buffer('steps', torch.Tensor([0]))
 
         self.num_train_steps = self.hp.num_train_steps

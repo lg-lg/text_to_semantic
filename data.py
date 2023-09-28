@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import torch.nn.functional as F
 import numpy as np
-
+import random
 
 def pad(input_ele, mel_max_length=None, pad_value=0.0):
     if mel_max_length:
@@ -58,9 +58,6 @@ class TextSemanticDataset(Dataset):
 
             if history_semantic_tokens.shape[0] > max_history_semantic_length:
                 history_semantic_tokens = history_semantic_tokens[-max_history_semantic_length:]
-            else:
-                history_semantic_tokens = torch.cat([history_semantic_tokens, torch.ones(
-                    max_history_semantic_length - history_semantic_tokens.shape[0]).long() * semantic_pad])
 
             if semantic_tokens.shape[0] >= max_semantic_length:
                 semantic_tokens = semantic_tokens[:max_semantic_length]
@@ -117,8 +114,23 @@ class TextSemanticDataset(Dataset):
                 text_data = torch.cat(
                     [text_data, torch.ones(self.max_text_length - text_len).long() * self.text_pad])
             assert text_data.shape[0] == self.max_text_length
-            assert history_semantic_len == self.max_history_semantic_length
 
+
+
+            # 对history semantic做长度上的mask, 以及有一定概率直接全部为0
+            unmask_len = torch.randint(low= 0, high=self.max_history_semantic_length + 1, size=(1,)).item()
+            unmask_len = min(unmask_len, history_semantic_len)
+            # 有20%不用history semantic：
+            if random.random() < 0.2:
+                history_semantic_data = torch.ones(self.max_history_semantic_length).long() * self.semantic_pad
+            else:
+                history_semantic_data = history_semantic_data[unmask_len:]
+                history_semantic_data = torch.cat([history_semantic_data, torch.ones(
+                    self.max_history_semantic_length - history_semantic_data.shape[0]).long() * self.semantic_pad])
+
+
+
+            assert history_semantic_len == self.max_history_semantic_length
             semantic_infer_token = (torch.ones(1).long() * self.semantic_infer)
 
             input_data = torch.cat([text_data, history_semantic_data, semantic_infer_token, semantic_data],
